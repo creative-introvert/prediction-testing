@@ -20,7 +20,7 @@ import type {
     Diff,
 } from '../Test.js';
 import type {TestRun} from '../Test.repository.js';
-import {TestRepository} from './Test.repository.sqlite.js';
+import {TestRepository} from '../Test.repository.js';
 
 export const makeSha256 = <I>(input: I): string => {
     return createHash('sha256').update(JSON.stringify(input)).digest('hex');
@@ -96,10 +96,9 @@ export const all = <I, O, T>({
     name,
 }: TestSuite<I, O, T>) =>
     P.Effect.gen(function* () {
-        const repository = yield* TestRepository;
         const currentTestRun =
-            yield* repository.getOrCreateCurrentTestRun(name);
-        yield* repository.clearTestRun(currentTestRun);
+            yield* TestRepository.getOrCreateCurrentTestRun(name);
+        yield* TestRepository.clearTestRun(currentTestRun);
 
         let ordering = 0;
         return P.Stream.fromIterable(testCases).pipe(
@@ -109,7 +108,7 @@ export const all = <I, O, T>({
                 {unordered: false},
             ),
             P.Stream.tap(testResult =>
-                repository.insertTestResult(testResult, name),
+                TestRepository.insertTestResult(testResult, name),
             ),
         );
     });

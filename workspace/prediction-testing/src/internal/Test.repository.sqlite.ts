@@ -44,10 +44,10 @@ const HasResultsSchema = P.Schema.Struct({
 
 const TestRunsReadSchema = TestRunReadSchema.pipe(P.Schema.Array);
 
-export const TestRepository =
-    P.Context.GenericTag<_TestRepository>('TestRunRepository');
-
-export type TestRepository = _TestRepository;
+export class TestRepository extends P.Effect.Tag('TestRunRepository')<
+    _TestRepository,
+    _TestRepository
+>() {}
 
 const makeTestRepository = P.Effect.gen(function* () {
     const sql = yield* Sql.client.Client;

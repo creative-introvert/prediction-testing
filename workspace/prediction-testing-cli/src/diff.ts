@@ -1,6 +1,3 @@
-import {isDeepStrictEqual} from 'node:util';
-import {randomUUID} from 'node:crypto';
-
 import type {ResultLengthMismatch, SqlError} from '@effect/sql/Error';
 import {Command, Options} from '@effect/cli';
 import * as PT from '@creative-introvert/prediction-testing';
@@ -24,17 +21,16 @@ export const _diff = <I = unknown, O = unknown, T = unknown>({
     config: Config<I, O, T>;
 }) =>
     P.Effect.gen(function* () {
-        const repository = yield* PT.TestRepository.TestRepository;
+        const currentTestRun =
+            yield* PT.TestRepository.TestRepository.getOrCreateCurrentTestRun(
+                testSuite.name,
+            );
+        const hasResults =
+            yield* PT.TestRepository.TestRepository.hasResults(currentTestRun);
 
-        const currentTestRun = yield* repository.getOrCreateCurrentTestRun(
-            testSuite.name,
-        );
-        const hasResults = yield* repository.hasResults(currentTestRun);
-
-        // FIXME: void type cast
-        const previousTestRun = (yield* getPreviousTestRunResults(
+        const previousTestRun = yield* getPreviousTestRunResults<I, O, T>(
             testSuite,
-        )) as P.Option.Option<PT.Test.TestRunResults<I, O, T>>;
+        );
 
         // FIXME: I can't filter before runCollectRecord, as
         // I need to calculate the stats first. Not sure how
@@ -93,12 +89,12 @@ export const _diff = <I = unknown, O = unknown, T = unknown>({
             PT.Test.TestRunResults,
             SqlError | P.Result.ParseError,
             PT.TestRepository.TestRepository
-        > = repository
-            .getTestResultsStream(currentTestRun)
-            .pipe(
-                PT.Test.runCollectRecord(currentTestRun),
-                P.Effect.map(filterUnchanged(previousTestRun)),
-            );
+        > = PT.TestRepository.TestRepository.getTestResultsStream(
+            currentTestRun,
+        ).pipe(
+            P.Effect.flatMap(PT.Test.runCollectRecord(currentTestRun)),
+            P.Effect.map(filterUnchanged(previousTestRun)),
+        );
 
         const testRun: PT.Test.TestRunResults = yield* P.Effect.if({
             onTrue: () => getFromRun,

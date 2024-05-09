@@ -41,17 +41,16 @@ export const _sumarize = <I = unknown, O = unknown, T = unknown>({
     config: Config<I, O, T>;
 }) =>
     P.Effect.gen(function* () {
-        const repository = yield* PT.TestRepository.TestRepository;
-        yield* P.Effect.logDebug('repository');
-
         const filterLabel = createFilterLabel(labels);
 
-        const currentTestRun = yield* repository.getOrCreateCurrentTestRun(
-            testSuite.name,
-        );
+        const currentTestRun =
+            yield* PT.TestRepository.TestRepository.getOrCreateCurrentTestRun(
+                testSuite.name,
+            );
         yield* P.Effect.logDebug('currentTestRun');
 
-        const hasResults = yield* repository.hasResults(currentTestRun);
+        const hasResults =
+            yield* PT.TestRepository.TestRepository.hasResults(currentTestRun);
         yield* P.Effect.logDebug('hasResults');
 
         const testRun: PT.Test.TestRunResults = yield* P.Effect.if(
@@ -65,12 +64,14 @@ export const _sumarize = <I = unknown, O = unknown, T = unknown>({
                         P.Effect.tap(P.Effect.log('from run')),
                     ),
                 onFalse: () =>
-                    repository
-                        .getTestResultsStream(currentTestRun)
-                        .pipe(
+                    PT.TestRepository.TestRepository.getTestResultsStream(
+                        currentTestRun,
+                    ).pipe(
+                        P.Effect.flatMap(
                             PT.Test.runCollectRecord(currentTestRun),
-                            P.Effect.tap(P.Effect.log('from cache')),
                         ),
+                        P.Effect.tap(P.Effect.log('from cache')),
+                    ),
             },
         );
 
